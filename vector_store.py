@@ -13,33 +13,59 @@ class VectorStoreManager:
     def initialize_vector_store(self, documents: Optional[List[Document]] = None):
         """Initialize or load the vector store"""
         try:
-            if documents and len(documents) > 0:
-                # Create new vector store with documents
-                self.vector_store = Chroma.from_documents(
-                    documents=documents,
-                    embedding=self.processor.embeddings,
-                    persist_directory=VECTOR_STORE_PATH,
-                    collection_name=COLLECTION_NAME
-                )
-                self.vector_store.persist()
-                print(f"Created new vector store with {len(documents)} documents")
-            else:
-                # Load existing vector store
-                if os.path.exists(VECTOR_STORE_PATH):
+            # Check if vector store already exists
+            if os.path.exists(VECTOR_STORE_PATH) and os.listdir(VECTOR_STORE_PATH):
+                try:
+                    # Load existing vector store
                     self.vector_store = Chroma(
                         persist_directory=VECTOR_STORE_PATH,
                         embedding_function=self.processor.embeddings,
                         collection_name=COLLECTION_NAME
                     )
                     print("Loaded existing vector store")
-                else:
-                    self.vector_store = None
-                    print("No existing vector store found")
+                    return self.vector_store
+                except Exception as e:
+                    print(f"Error loading existing vector store: {e}")
+                    # Fall through to create new one
+            
+            # Create new vector store if documents are provided
+            if documents and len(documents) > 0:
+                try:
+                    self.vector_store = Chroma.from_documents(
+                        documents=documents,
+                        embedding=self.processor.embeddings,
+                        persist_directory=VECTOR_STORE_PATH,
+                        collection_name=COLLECTION_NAME
+                    )
+                    self.vector_store.persist()
+                    print(f"Created new vector store with {len(documents)} documents")
+                    return self.vector_store
+                except Exception as e:
+                    print(f"Error creating new vector store: {e}")
+                    return None
+            
+            # No existing store and no documents provided
+            print("No existing vector store found and no documents provided")
+            # Create an empty vector store for initialization
+            try:
+                from langchain_community.vectorstores import Chroma
+                self.vector_store = Chroma(
+                    embedding_function=self.processor.embeddings,
+                    persist_directory=VECTOR_STORE_PATH,
+                    collection_name=COLLECTION_NAME
+                )
+                print("Created empty vector store for initialization")
+                return self.vector_store
+            except Exception as e:
+                print(f"Error creating empty vector store: {e}")
+                return None
+            
         except Exception as e:
             print(f"Error initializing vector store: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.vector_store = None
-        
-        return self.vector_store
+            return None
     
     def add_documents(self, file_paths: List[str]):
         """Add new documents to the vector store"""
@@ -60,6 +86,8 @@ class VectorStoreManager:
             return len(documents)
         except Exception as e:
             print(f"Error adding documents: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return 0
     
     def search_documents(self, query: str, k: int = 4):
@@ -83,3 +111,17 @@ class VectorStoreManager:
             return {"collection_count": collection.count()}
         except:
             return {"collection_count": 0}
+    
+    def clear_vector_store(self):
+        """Clear the vector store"""
+        try:
+            if os.path.exists(VECTOR_STORE_PATH):
+                import shutil
+                shutil.rmtree(VECTOR_STORE_PATH)
+                print("Vector store cleared")
+                self.vector_store = None
+                return True
+        except Exception as e:
+            print(f"Error clearing vector store: {str(e)}")
+            return False
+        return False

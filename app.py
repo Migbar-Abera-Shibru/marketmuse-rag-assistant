@@ -6,7 +6,7 @@ from utils import save_uploaded_file, display_source_documents, init_session_sta
 
 # Page configuration
 st.set_page_config(
-    page_title="MarketMuse - Content Strategy Assistant",
+    page_title="MarketMuse - Document-Based Content Assistant",
     page_icon="📝",
     layout="wide"
 )
@@ -16,9 +16,9 @@ init_session_state()
 
 # Sidebar for document upload and API key setup
 with st.sidebar:
-    st.title("📁 Knowledge Base")
+    st.title("📁 Document Management")
     
-    # API key input (always show as fallback)
+    # API key input
     api_key = st.text_input("Groq API Key", 
                           value=st.session_state.api_key,
                           type="password",
@@ -34,7 +34,7 @@ with st.sidebar:
             st.session_state.api_key_set = success
             
             if success:
-                st.success("API key set successfully! RAG assistant initialized.")
+                st.success("API key set successfully! Assistant initialized.")
                 time.sleep(1)
                 st.rerun()
             else:
@@ -43,15 +43,16 @@ with st.sidebar:
         else:
             st.error("Please enter a valid API key")
     
-    # Document upload
+    # Document upload section
     st.divider()
-    st.subheader("Document Management")
+    st.subheader("Upload Documents")
     
     uploaded_files = st.file_uploader(
-        "Upload documents for your knowledge base",
+        "Upload documents for analysis",
         type=["pdf", "txt", "docx", "pptx", "html", "md"],
         accept_multiple_files=True,
-        key="doc_uploader"
+        key="doc_uploader",
+        help="Upload documents that you want to ask questions about"
     )
     
     if uploaded_files and st.button("Process Documents", key="process_docs"):
@@ -73,80 +74,83 @@ with st.sidebar:
                 if file_paths:
                     try:
                         num_docs = st.session_state.rag_assistant.add_documents(file_paths)
-                        st.success(f"Processed {num_docs} document chunks!")
+                        if num_docs > 0:
+                            st.success(f"Processed {num_docs} document chunks! You can now ask questions about these documents.")
+                        else:
+                            st.warning("No new content was extracted from the documents.")
                     except Exception as e:
                         st.error(f"Error processing documents: {str(e)}")
                 else:
                     st.warning("No new documents to process")
     
-    # Display knowledge base stats
+    # Document status
     st.divider()
-    st.subheader("Knowledge Base Status")
+    st.subheader("Document Status")
     
     if st.session_state.rag_assistant.is_initialized():
         stats = st.session_state.rag_assistant.get_stats()
-        st.info(f"✓ Knowledge base contains {stats.get('collection_count', 0)} document chunks")
-        st.success("✓ RAG assistant is ready to answer questions!")
-    else:
-        st.error("✗ RAG assistant not initialized. Please set your API key.")
-    
-    # Debug info (can be removed in production)
-    st.divider()
-    with st.expander("Debug Info"):
-        st.write(f"API Key set: {st.session_state.get('api_key_set', False)}")
-        st.write(f"API Key length: {len(st.session_state.api_key) if st.session_state.api_key else 0}")
-        st.write(f"RAG Initialized: {st.session_state.rag_assistant.is_initialized() if 'rag_assistant' in st.session_state else False}")
+        doc_count = stats.get("collection_count", 0)
         
-        if not st.session_state.rag_assistant.is_initialized() and st.session_state.api_key:
-            error_msg = st.session_state.rag_assistant.get_initialization_error()
-            st.write(f"Initialization Error: {error_msg}")
+        if doc_count > 0:
+            st.success(f"✓ {doc_count} document chunks ready for analysis")
+            st.info("You can ask questions about your uploaded documents.")
+        else:
+            st.warning("No documents uploaded yet. Please upload documents to ask questions.")
+    else:
+        st.error("✗ Assistant not initialized. Please set your API key.")
+    
+    # Clear chat button
+    st.divider()
+    if st.button("Clear Chat History", key="clear_chat"):
+        st.session_state.messages = []
+        st.rerun()
     
     # Instructions
     st.sidebar.markdown("---")
     st.sidebar.info(
         """
         **How to use:**
-        1. Enter your Groq API key
-        2. Click 'Set API Key' button
-        3. Upload documents (PDF, TXT, DOCX, etc.)
-        4. Click 'Process Documents'
-        5. Ask questions about content strategy
-        6. View sources in the expanders
+        1. Set your Groq API key
+        2. Upload documents (PDF, TXT, DOCX, etc.)
+        3. Click 'Process Documents'
+        4. Ask questions **only about the uploaded documents**
+        5. View sources in the expanders
         
-        **Get API key:** https://console.groq.com
+        **Note:** This assistant will ONLY answer questions based on your uploaded documents.
         """
     )
 
 # Main content area
-st.title("📝 MarketMuse - Content Strategy Assistant")
-st.caption("A RAG-powered assistant for content strategy and creation")
+st.title("📝 Document-Based Content Assistant")
+st.caption("Ask questions specifically about your uploaded documents")
 
-# Display status message based on initialization
+# Display status message
 if not st.session_state.rag_assistant.is_initialized():
     st.error("""
-    **RAG assistant not initialized.**
+    **Assistant not initialized.**
     
     Please follow these steps:
     1. Get a free API key from [Groq Console](https://console.groq.com)
     2. Enter your API key in the sidebar
     3. Click the 'Set API Key' button
-    4. The assistant will initialize automatically
     """)
     
-    # Show specific error if available
     if st.session_state.api_key:
         error_msg = st.session_state.rag_assistant.get_initialization_error()
-        st.warning(f"Initialization error: {error_msg}")
+        st.warning(f"**Initialization error:** {error_msg}")
+
+elif not st.session_state.rag_assistant.has_documents():
+    st.warning("""
+    **No documents uploaded.**
     
-    st.info("""
-    **Why do I need an API key?**
-    - This assistant uses Groq's powerful language models
-    - API keys are free for limited usage
-    - Your key is only stored in your browser session
-    - No documents are sent to Groq - only your questions
+    Please upload documents first:
+    1. Go to the sidebar
+    2. Upload documents (PDF, TXT, DOCX, etc.)
+    3. Click 'Process Documents'
+    4. Then ask questions about your documents
     """)
 else:
-    st.success("✅ RAG assistant is initialized and ready to use!")
+    st.success("✅ Assistant is ready! You can ask questions about your uploaded documents.")
 
 # Display chat messages
 for message in st.session_state.messages:
@@ -154,16 +158,18 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
         
         if message.get("sources"):
-            with st.expander("View Sources"):
+            with st.expander("View Source Documents"):
                 for source in message["sources"]:
                     st.text(f"Document: {source.metadata.get('source', 'Unknown')}")
                     if 'page' in source.metadata:
                         st.text(f"Page: {source.metadata.get('page', 'N/A')}")
                     st.caption(source.page_content[:200] + "...")
 
-# Chat input (only show if initialized)
-if st.session_state.rag_assistant.is_initialized():
-    if prompt := st.chat_input("Ask about content strategy..."):
+# Chat input (only show if initialized and has documents)
+if (st.session_state.rag_assistant.is_initialized() and 
+    st.session_state.rag_assistant.has_documents()):
+    
+    if prompt := st.chat_input("Ask a question about your documents..."):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
         
@@ -173,14 +179,14 @@ if st.session_state.rag_assistant.is_initialized():
         
         # Generate assistant response
         with st.chat_message("assistant"):
-            with st.spinner("Researching and generating response..."):
+            with st.spinner("Searching through your documents..."):
                 try:
                     response = st.session_state.rag_assistant.query(prompt)
                     
                     # Display response
                     st.markdown(response["result"])
                     
-                    # Display sources
+                    # Display sources if available
                     if response.get("source_documents"):
                         display_source_documents(response["source_documents"])
                     
@@ -197,6 +203,9 @@ if st.session_state.rag_assistant.is_initialized():
                         "role": "assistant", 
                         "content": error_msg
                     })
+elif st.session_state.rag_assistant.is_initialized():
+    # Show message about needing documents
+    disabled_chat = st.chat_input("Upload documents in the sidebar to ask questions...", disabled=True)
 else:
-    # Show disabled chat input with message
-    disabled_chat = st.chat_input("Enter your API key in the sidebar to enable chat...", disabled=True)
+    # Show disabled chat input
+    disabled_chat = st.chat_input("Set your API key in the sidebar to enable chat...", disabled=True)
