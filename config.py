@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# API Configuration 
+# API Configuration - with better fallback handling
 def get_api_key():
     """Get API key from environment or return empty string"""
     return os.getenv("GROQ_API_KEY", "").strip()
