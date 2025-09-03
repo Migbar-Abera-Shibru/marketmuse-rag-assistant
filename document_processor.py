@@ -6,7 +6,7 @@ from langchain_community.document_loaders import (
     UnstructuredPowerPointLoader, UnstructuredHTMLLoader
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings  # Updated import
+from langchain_huggingface import HuggingFaceEmbeddings  
 from config import CHUNK_SIZE, CHUNK_OVERLAP, EMBEDDING_MODEL, SUPPORTED_EXTENSIONS
 
 class DocumentProcessor:
