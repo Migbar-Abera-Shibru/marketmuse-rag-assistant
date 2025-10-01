@@ -31,3 +31,14 @@ A Streamlit-based application that uses RAG (Retrieval Augmented Generation) to 
 - ChromaDB
 - Groq API
 - HuggingFace Embeddings
+
+### Supported Document Types:
+- Marketing plans and strategies
+- Content calendars and editorial plans
+- SEO optimization documents
+- Audience persona descriptions
+- Competitive analysis reports
+- Content performance metrics
+
+
+
